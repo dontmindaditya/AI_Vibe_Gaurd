@@ -194,6 +194,67 @@ const rules = [
       "Block __proto__/constructor/prototype keys and use hardened merge utilities.",
     patterns: [/lodash\.merge\s*\(/, /deepmerge\s*\(/, /Object\.assign\s*\(\s*\{\}\s*,\s*req\./],
   },
+  {
+    id: "VG015",
+    title: "Server-Side Request Forgery (SSRF) candidate",
+    severity: "critical",
+    confidence: "medium",
+    description:
+      "User-controlled URLs passed to HTTP clients can enable server-side request forgery, allowing attackers to reach internal services or exfiltrate data.",
+    recommendation:
+      "Validate and allowlist URLs, block private IP ranges, and use a dedicated SSRF-safe HTTP client.",
+    patterns: [
+      /fetch\s*\(\s*req\.(query|body|params)\./,
+      /axios\.(get|post|put|delete|patch)\s*\(\s*req\.(query|body|params)\./,
+      /requests\.(get|post|put|delete)\s*\([^)]*request\.(args|form|get_json)/,
+      /urllib\.request\s*\([^)]*request\.(args|form|get_json)/,
+      /\.get\s*\(\s*req\.(query|body|params)\.[^)]*\)/,
+      /http\.get\s*\(\s*req\.(query|body|params)\./,
+      /http\.request\s*\(\s*[^)]*req\.(query|body|params)\./,
+    ],
+  },
+  {
+    id: "VG016",
+    title: "NoSQL injection candidate",
+    severity: "critical",
+    confidence: "medium",
+    description:
+      "Passing user-controlled objects to NoSQL queries can enable injection attacks, bypassing authentication or exfiltrating data.",
+    recommendation:
+      "Use query builders with parameterized inputs, validate input types strictly, and avoid passing raw objects to queries.",
+    patterns: [
+      /collection\.(find|findOne|update|delete|remove)\s*\(\s*req\.(query|body|params)\./,
+      /db\.(find|findOne|update|delete|remove)\s*\(\s*req\.(query|body|params)\./,
+      /\.find\s*\(\s*req\.(query|body|params)\./,
+      /\.findOne\s*\(\s*req\.(query|body|params)\./,
+      /\$where\s*:\s*.*req\.(query|body|params)\./,
+      /\$where\s*:\s*.*request\.(args|form|get_json)/,
+      /MongoClient.*find\s*\(\s*req\./,
+      /mongoose\..*find\s*\(\s*req\./,
+    ],
+  },
+  {
+    id: "VG017",
+    title: "XML External Entity (XXE) candidate",
+    severity: "high",
+    confidence: "medium",
+    description:
+      "XML parsers with external entity processing enabled can be exploited to read files, perform SSRF, or cause denial of service.",
+    recommendation:
+      "Disable DTD processing and external entities in XML parsers, or use JSON instead of XML.",
+    patterns: [
+      /xml\.parse\s*\([^)]*,?\s*(?!.*disableDTD|.*noent\s*=\s*false)/,
+      /lxml\.etree\.parse\s*\(/,
+      /lxml\.etree\.fromstring\s*\(/,
+      /xml\.etree\.ElementTree\.parse\s*\(/,
+      /DocumentBuilderFactory[^)]*(?!.*FEATURE_SECURE_PROCESSING)/,
+      /SAXParserFactory[^)]*(?!.*FEATURE_SECURE_PROCESSING)/,
+      /XMLReader[^)]*(?!.*setFeature.*disallow-doctype-decl)/,
+      /new\s+SAXParser\s*\(/,
+      /JAXBContext\.newInstance/,
+      /TransformerFactory\.newInstance/,
+    ],
+  },
 ];
 
 const severities = ["low", "medium", "high", "critical"];

@@ -19,6 +19,7 @@ function printHelp() {
   process.stdout.write(`  vibe-guard scan [path] [options]\n\n`);
   process.stdout.write(`Options:\n`);
   process.stdout.write(`  --json                       Print machine-readable JSON output\n`);
+  process.stdout.write(`  --sarif                      Print output in SARIF format (GitHub Code Scanning compatible)\n`);
   process.stdout.write(`  --min-severity <level>       low|medium|high|critical (default: low)\n`);
   process.stdout.write(`  --fail-on <level>            Exit non-zero if finding >= level exists\n`);
   process.stdout.write(`  --max-file-size-kb <number>  Skip files larger than given KB (default: 512)\n`);
@@ -30,6 +31,7 @@ function printHelp() {
   process.stdout.write(`  vibe-guard scan .\n`);
   process.stdout.write(`  vibe-guard scan ./services/api --min-severity high --fail-on medium\n`);
   process.stdout.write(`  vibe-guard scan . --json\n`);
+  process.stdout.write(`  vibe-guard scan . --sarif > results.sarif\n`);
 }
 
 function parseArgs(argv) {
@@ -37,6 +39,7 @@ function parseArgs(argv) {
     command: null,
     target: ".",
     json: false,
+    sarif: false,
     minSeverity: "low",
     failOn: null,
     includeTests: false,
@@ -64,6 +67,12 @@ function parseArgs(argv) {
 
     if (token === "--json") {
       result.json = true;
+      i += 1;
+      continue;
+    }
+
+    if (token === "--sarif") {
+      result.sarif = true;
       i += 1;
       continue;
     }
@@ -131,6 +140,107 @@ function colorizeSeverity(severity, text) {
   return `${COLORS.cyan}${text}${COLORS.reset}`;
 }
 
+/**
+ * Maps Vibe Guard severity levels to SARIF severity levels.
+ * Based on SARIF specification: https://docs.oasis-open.org/sarif/sarif/v2.1.0/
+ */
+function toSarifSeverity(severity) {
+  const mapping = {
+    critical: "error",
+    high: "error",
+    medium: "warning",
+    low: "note",
+  };
+  return mapping[severity] || "warning";
+}
+
+/**
+ * Generates SARIF (Static Analysis Results Interchange Format) output.
+ * SARIF is an OASIS standard for static analysis tools, compatible with
+ * GitHub Code Scanning, Azure DevOps, and SonarQube.
+ * Reference: https://docs.oasis-open.org/sarif/sarif/v2.1.0/
+ */
+function generateSarif(report, cwd) {
+  const rules = {};
+  const results = [];
+
+  for (const finding of report.findings) {
+    const ruleId = finding.ruleId;
+    
+    // Build rule metadata
+    if (!rules[ruleId]) {
+      rules[ruleId] = {
+        id: ruleId,
+        shortDescription: {
+          text: finding.title,
+        },
+        fullDescription: {
+          text: finding.description,
+        },
+        help: {
+          text: finding.recommendation,
+        },
+        defaultConfiguration: {
+          level: toSarifSeverity(finding.severity),
+        },
+      };
+    }
+
+    const relativePath = path.relative(cwd, finding.file) || finding.file;
+    
+    results.push({
+      ruleId: ruleId,
+      level: toSarifSeverity(finding.severity),
+      message: {
+        text: finding.description,
+      },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: {
+              uri: relativePath.replace(/\\/g, "/"),
+            },
+            region: {
+              startLine: finding.line,
+            },
+          },
+        },
+      ],
+      partialFingerprints: {
+        snippet: finding.snippet ? finding.snippet.slice(0, 100) : undefined,
+      },
+    });
+  }
+
+  const sarif = {
+    $schema: "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    version: "2.1.0",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "Vibe Guard",
+            version: "1.2.0",
+            informationUri: "https://github.com/vibe-guard/vibe-guard",
+            description: {
+              text: "Security scanner for detecting high-risk patterns in AI-generated code",
+            },
+            rules: Object.values(rules),
+          },
+        },
+        results: results,
+        properties: {
+          scannedFiles: report.scannedFiles,
+          scannedPath: report.scannedPath,
+          summary: report.summary,
+        },
+      },
+    ],
+  };
+
+  return sarif;
+}
+
 function run() {
   let parsed;
 
@@ -170,7 +280,10 @@ function run() {
     return;
   }
 
-  if (parsed.json) {
+  if (parsed.sarif) {
+    const sarif = generateSarif(report, process.cwd());
+    process.stdout.write(`${JSON.stringify(sarif, null, 2)}\n`);
+  } else if (parsed.json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
     const relativeTarget = path.relative(process.cwd(), report.scannedPath) || ".";

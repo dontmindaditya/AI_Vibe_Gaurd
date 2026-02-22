@@ -84,6 +84,34 @@ const FLOW_RULES = [
       /\b(readFile|readFileSync|open|createReadStream|sendFile|writeFile|writeFileSync)\s*\(([^)]*)\)/g,
     pySink: /\b(open|send_file)\s*\(([^)]*)\)/g,
   },
+  {
+    id: "VG206",
+    title: "Tainted data reaches HTTP client sink (SSRF)",
+    severity: "critical",
+    confidence: "medium",
+    description:
+      "User-controlled data appears to flow into HTTP client URLs, enabling Server-Side Request Forgery.",
+    recommendation:
+      "Validate and allowlist URLs, block private IP ranges, and use SSRF-safe HTTP clients.",
+    jsSink:
+      /\b(fetch|axios\.(get|post|put|delete|patch)|http\.(get|request)|https\.(get|request))\s*\(([^)]*)\)/g,
+    pySink:
+      /\b(requests\.(get|post|put|delete|patch)|urllib\.request\.urlopen|httpx\.(get|post|put|delete))\s*\(([^)]*)\)/g,
+  },
+  {
+    id: "VG207",
+    title: "Tainted data reaches NoSQL query sink",
+    severity: "critical",
+    confidence: "medium",
+    description:
+      "User-controlled data appears to flow into NoSQL database queries, enabling injection attacks.",
+    recommendation:
+      "Use query builders with parameterized inputs and validate input types strictly.",
+    jsSink:
+      /\b(collection|db|mongoose|Model)\.(find|findOne|update|delete|remove|aggregate)\s*\(([^)]*)\)/g,
+    pySink:
+      /\b(collection|db)\.(find|find_one|update|delete|remove|aggregate)\s*\(([^)]*)\)/g,
+  },
 ];
 
 function stripLineComments(line) {
