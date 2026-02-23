@@ -1,5 +1,6 @@
 "use strict";
 
+
 const rules = [
   {
     id: "VG001",
