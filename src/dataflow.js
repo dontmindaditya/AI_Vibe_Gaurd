@@ -9,6 +9,7 @@ const JS_LIKE_EXTENSIONS = new Set([
   ".cjs",
 ]);
 
+
 const PYTHON_EXTENSIONS = new Set([".py"]);
 
 const SOURCE_PATTERNS = [
