@@ -1,5 +1,6 @@
 "use strict";
 
+
 const copyBtn = document.getElementById("copy-btn");
 const commandEl = document.getElementById("command");
 
