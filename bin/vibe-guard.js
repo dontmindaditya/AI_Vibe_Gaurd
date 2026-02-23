@@ -13,6 +13,7 @@ const COLORS = {
   gray: "\x1b[90m",
 };
 
+
 function printHelp() {
   process.stdout.write(`vibe-guard - scan repositories for high-risk patterns from rushed AI-generated code\n\n`);
   process.stdout.write(`Usage:\n`);
