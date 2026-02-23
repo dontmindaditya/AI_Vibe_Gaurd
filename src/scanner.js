@@ -5,6 +5,7 @@ const path = require("node:path");
 const { rules, severities } = require("./rules");
 const { analyzeDataflow } = require("./dataflow");
 
+
 const DEFAULT_IGNORED_DIRS = new Set([
   ".git",
   "node_modules",
