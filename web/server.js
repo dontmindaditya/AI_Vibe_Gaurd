@@ -54,6 +54,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
+
 server.listen(PORT, HOST, () => {
   process.stdout.write(`Landing page available at http://${HOST}:${PORT}\n`);
 });
